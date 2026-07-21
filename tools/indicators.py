@@ -135,7 +135,9 @@ class IndicatorEngine:
     # ── 内部指标计算 ──
 
     def _load_ohlc(self, code: str, days: int) -> list:
-        """加载OHLC数据"""
+        """加载OHLC数据 + 交易日自动融合今日实时数据"""
+        from tools.realtime import merge_today
+        
         market = "sh" if code.startswith(("sh", "6")) else "sz"
         code_num = code.replace("sh", "").replace("sz", "")
         if market == "sh" and not code_num.startswith("6"):
@@ -143,7 +145,6 @@ class IndicatorEngine:
         
         filepath = os.path.join(self.tdx_path, market, "lday", f"{market}{code_num}.day")
         if not os.path.exists(filepath):
-            # 尝试另一种路径
             filepath = os.path.join(self.tdx_path, market, f"{market}{code_num}.day")
             if not os.path.exists(filepath):
                 return []
@@ -163,6 +164,9 @@ class IndicatorEngine:
                         data.append({"date": date, "open": o/100.0, "high": h/100.0, "low": l/100.0, "close": c/100.0, "amount": amt, "volume": vol})
         except Exception:
             return []
+        
+        # 交易日: 融合今日实时数据
+        data = merge_today(data, f"{market}{code_num}")
         
         return data[-days:] if len(data) > days else data
 
